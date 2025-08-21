@@ -168,3 +168,37 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           comment-summary-in-pr: always
+  
+  code-security-check:
+    needs: versioning
+    runs-on: ubuntu-latest
+    name: Code Security Check
+    permissions:
+      security-events: write
+      packages: read
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: CodeQL Init - Backend
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+
+      - name: CodeQL Analyze - Backend
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:csharp"
+
+      - name: CodeQL Init - Frontend
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: CodeQL Analyze - Frontend
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript"
