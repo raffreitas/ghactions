@@ -156,6 +156,9 @@ jobs:
     needs: versioning
     runs-on: ubuntu-latest
     name: Dependency Check
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -163,3 +166,5 @@ jobs:
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
+        with:
+          comment-summary-in-pr: always
