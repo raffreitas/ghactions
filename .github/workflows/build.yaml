@@ -72,10 +72,13 @@ jobs:
           path: TestResults
 
   frontend-build-and-tests:
-    if: false
+    needs: versioning
     runs-on: ubuntu-latest
-    name: Build Project
-  
+    name: Frontend Build and Tests
+    defaults:
+      run:
+        working-directory: ./src/web
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -83,12 +86,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: ./src/web
 
       - name: Install dependencies
-        working-directory: ./src/web
         run: |
-          npm install
+          npm ci
+
+      - name: Test
+        run: |
+          npm run lint
+
+      - name: Build
+        run: |
           npm run build
