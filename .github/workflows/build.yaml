@@ -179,26 +179,27 @@ jobs:
       contents: read
       actions: read
 
+    strategy:
+      matrix:
+        include:
+          - name: Backend
+            language: csharp
+            build-mode: autobuild
+          - name: Frontend
+            language: javascript
+            build-mode: none
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: CodeQL Init - Backend
+      - name: CodeQL Init - ${{ matrix.name }}
         uses: github/codeql-action/init@v3
         with:
-          languages: csharp
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
 
-      - name: CodeQL Analyze - Backend
+      - name: CodeQL Analyze - ${{ matrix.name }}
         uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:csharp"
-
-      - name: CodeQL Init - Frontend
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript
-
-      - name: CodeQL Analyze - Frontend
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:javascript"
+          category: "/language:${{ matrix.language }}"
