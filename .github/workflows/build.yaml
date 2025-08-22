@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Versioning
 
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -75,6 +78,16 @@ jobs:
           name: dotnet-test-results
           path: TestResults
 
+      - name: Publish
+        run: |
+          dotnet publish ./src/api/Todo.Api.csproj --no-restore --no-build --configuration Release --output ./publish
+
+      - name: Upload dotnet artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: api
+          path: ./publish
+
   backend-lint:
     needs: versioning
     runs-on: ubuntu-latest
@@ -125,6 +138,12 @@ jobs:
         run: |
           npm run build
 
+      - name: Upload frontend artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: ./src/web/dist
+
   frontend-lint:
     needs: versioning
     runs-on: ubuntu-latest
@@ -151,3 +170,92 @@ jobs:
       - name: Lint
         run: |
           npm run lint
+          
+  dependency-check:
+    needs: versioning
+    runs-on: ubuntu-latest
+    name: Dependency Check
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          comment-summary-in-pr: always
+  
+  code-security-check:
+    needs: versioning
+    runs-on: ubuntu-latest
+    name: Code Security Check
+    permissions:
+      security-events: write
+      packages: read
+      contents: read
+      actions: read
+
+    strategy:
+      matrix:
+        include:
+          - name: Backend
+            language: csharp
+            build-mode: autobuild
+          - name: Frontend
+            language: javascript
+            build-mode: none
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: CodeQL Init - ${{ matrix.name }}
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: CodeQL Analyze - ${{ matrix.name }}
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  build-docker-image:
+    needs: [versioning, backend-build-and-tests, frontend-build-and-tests]
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+
+    env:
+      version: ${{ needs.versioning.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download dotnet artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: app
+          merge-multiple: false
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ vars.DOCKER_REPOSITORY }}:${{ env.version }} .
+
+      - name: Tag Docker Image as Latest
+        run: |
+          docker tag ${{ vars.DOCKER_REPOSITORY }}:${{ env.version }} ${{ vars.DOCKER_REPOSITORY }}:latest
+        if: github.ref == 'refs/heads/main'
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Docker push
+        run: |
+          docker push --all-tags ${{ vars.DOCKER_REPOSITORY }}
