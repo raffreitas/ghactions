@@ -79,7 +79,6 @@ jobs:
           path: TestResults
 
       - name: Publish
-        if: github.ref == 'refs/heads/main'
         run: |
           dotnet publish ./src/api/Todo.Api.csproj --no-restore --no-build --configuration Release --output ./publish
 
