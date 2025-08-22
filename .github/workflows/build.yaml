@@ -243,6 +243,19 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t todo-app:${{ env.version }} .
-      
-      
+          docker build -t ${{ vars.DOCKER_REPOSITORY }}:${{ env.version }} .
+
+      - name: Tag Docker Image as Latest
+        run: |
+          docker tag ${{ vars.DOCKER_REPOSITORY }}:${{ env.version }} ${{ vars.DOCKER_REPOSITORY }}:latest
+        if: github.ref == 'refs/heads/main'
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Docker push
+        run: |
+          docker push --all-tags ${{ vars.DOCKER_REPOSITORY }}
